@@ -8,9 +8,10 @@ page_header("Settings", "Set your AI provider API keys for this browser session.
 
 st.info(
     "Keys entered here apply **only to your current browser session** — nothing is saved on the "
-    "server and nothing is ever read from an environment file. Other people using this same app "
-    "(e.g. a shared deployed link) never see your key, and you'll need to re-enter it in any new "
-    "session (new tab, refresh, or after closing the browser)."
+    "server. Other people using this same app (e.g. a shared deployed link) never see your key, "
+    "and you'll need to re-enter it in any new session (new tab, refresh, or after closing the "
+    "browser). The one exception is Gemini, which may fall back to a default key set by whoever "
+    "deployed this app, if you don't set your own below."
 )
 
 for provider, label in PROVIDER_LABELS.items():
@@ -18,9 +19,12 @@ for provider, label in PROVIDER_LABELS.items():
         st.subheader(f"{PROVIDER_ICONS[provider]} {label}")
 
         session_key = session_keys.get_session_key(provider)
+        deployment_default = session_keys.get_deployment_default_key(provider)
 
         if session_key:
             st.success(f"Using your session key — ending in **····{session_key[-4:]}**")
+        elif deployment_default:
+            st.info("No session key set — currently using this deployment's default key (set by whoever hosts this app).")
         else:
             st.warning("No API key set for this session yet. Generation with this provider won't work until you add one.")
 

@@ -1,16 +1,37 @@
 from __future__ import annotations
 
 import json
-import sqlite3
+import os
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from pathlib import Path
+
+import psycopg
+from psycopg.rows import dict_row
 
 from models import EstimateResponse, PhaseDto, ProjectDto, RoleHourDto, StoryDto, TaskDto, TestCaseDto
 from timeline import TimelinePhaseResult
 
-DB_PATH = Path(__file__).parent / "estimation_tool.db"
+
+def _database_url() -> str:
+    """DATABASE_URL is deployment-level infrastructure config (which Postgres to
+    talk to), not a per-user credential like the LLM API keys - so unlike those,
+    it's expected to come from an env var / Streamlit secret, shared by the whole
+    deployment. Every visitor still only ever sees their own rows within it."""
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        try:
+            import streamlit as st
+
+            url = st.secrets.get("DATABASE_URL")
+        except Exception:
+            url = None
+    if not url:
+        raise RuntimeError(
+            "DATABASE_URL is not set. Add it to streamlit_app/.env for local development, "
+            "or as a Streamlit Cloud secret for deployment."
+        )
+    return url
 
 
 def new_id() -> str:
@@ -21,16 +42,51 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+class _CompatCursor:
+    """Wraps a psycopg cursor so existing '?'-placeholder SQL and sqlite3.Row-style
+    row['col'] access (already used throughout this file) keep working unchanged
+    against Postgres, which uses '%s' placeholders."""
+
+    def __init__(self, cur):
+        self._cur = cur
+
+    def execute(self, sql: str, params=()):
+        self._cur.execute(sql.replace("?", "%s"), params)
+        return self
+
+    def fetchone(self):
+        return self._cur.fetchone()
+
+    def fetchall(self):
+        return self._cur.fetchall()
+
+
+class _CompatConnection:
+    def __init__(self, conn):
+        self._conn = conn
+
+    def execute(self, sql: str, params=()):
+        return _CompatCursor(self._conn.cursor()).execute(sql, params)
+
+    def executescript(self, sql: str):
+        self._conn.cursor().execute(sql)
+
+    def commit(self):
+        self._conn.commit()
+
+    def close(self):
+        self._conn.close()
+
+
 @contextmanager
 def get_conn():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
+    conn = psycopg.connect(_database_url(), row_factory=dict_row)
+    wrapped = _CompatConnection(conn)
     try:
-        yield conn
-        conn.commit()
+        yield wrapped
+        wrapped.commit()
     finally:
-        conn.close()
+        wrapped.close()
 
 
 def init_db():

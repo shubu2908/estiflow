@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model AppSettings {
+  id           String  @id @default("singleton")
+  geminiApiKey String?
+}
+
+model Project {
+  id                 String   @id @default(cuid())
+  name               String
+  technology         String // JSON-encoded string[]
+  devStartDate       DateTime
+  geminiModel        String
+  complexityOverride String? // Simple | Medium | Complex | null
+  aiComplexity       String? // Low | Medium | High, set after generation
+  assumptions        String   @default("[]") // JSON-encoded string[]
+  hoursPerDay         Float    @default(6)
+  workingDays        String   @default("[1,2,3,4,5]") // JSON-encoded number[]
+  status             String   @default("draft") // draft | generated | edited
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  phases      Phase[]
+  stories     Story[]
+  customRoles CustomRole[]
+}
+
+model Phase {
+  id            String  @id @default(cuid())
+  projectId     String
+  project       Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name          String
+  order         Int
+  hours         Float
+  bufferPercent Float
+  startDate     DateTime?
+  endDate       DateTime?
+  rationale     String?
+  dependencies  String?
+
+  roleHours RoleHour[]
+  stories   Story[]
+
+  @@index([projectId])
+}
+
+model RoleHour {
+  id      String @id @default(cuid())
+  phaseId String
+  phase   Phase  @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+  role    String
+  hours   Float
+
+  @@index([phaseId])
+}
+
+model Story {
+  id                 String  @id @default(cuid())
+  projectId          String
+  project            Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phaseId            String?
+  phase              Phase?  @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+  epic               String
+  title              String
+  description        String
+  acceptanceCriteria String // JSON-encoded string[]
+  storyPoints        Int
+  order              Int
+
+  tasks     Task[]
+  testCases TestCase[]
+
+  @@index([projectId])
+  @@index([phaseId])
+}
+
+model Task {
+  id      String @id @default(cuid())
+  storyId String
+  story   Story  @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  title   String
+  hours   Float
+  role    String
+
+  @@index([storyId])
+}
+
+model TestCase {
+  id             String @id @default(cuid())
+  storyId        String
+  story          Story  @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  title          String
+  precondition   String?
+  steps          String // JSON-encoded string[]
+  expectedResult String
+  priority       String // High | Med | Low
+  type           String // Functional | Regression | Negative
+  order          Int
+
+  @@index([storyId])
+}
+
+model CustomRole {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+
+  @@index([projectId])
+}

@@ -10,6 +10,9 @@ from model_catalog import PROVIDER_ICONS, PROVIDER_LABELS
 from models import RoleHourDto, TaskDto, TestCaseDto
 from styles import page_header, pill
 from timeline import TimelinePhaseInput, calculate_timeline
+from user_scope import get_user_id
+
+user_id = get_user_id()
 
 project_id = st.session_state.get("active_project_id")
 if not project_id:
@@ -18,7 +21,7 @@ if not project_id:
         st.switch_page("views/dashboard.py")
     st.stop()
 
-project = db.get_project(project_id)
+project = db.get_project(project_id, user_id)
 if not project:
     st.error("That project no longer exists.")
     if st.button("← Back to Dashboard"):
@@ -30,7 +33,7 @@ def recalc_and_save(hours_per_day=None, working_days=None):
     """Recompute phase dates from current DB state (optionally with overridden
     hours_per_day/working_days) and persist - single source of truth is the DB,
     reloaded fresh on every rerun, so every edit goes: mutate -> recalc -> save -> rerun."""
-    p = db.get_project(project.id)
+    p = db.get_project(project.id, user_id)
     hpd = hours_per_day if hours_per_day is not None else p.hoursPerDay
     wd = working_days if working_days is not None else p.workingDays
     timeline = calculate_timeline(

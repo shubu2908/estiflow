@@ -39,6 +39,7 @@ def init_db():
             """
             CREATE TABLE IF NOT EXISTS projects (
                 id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL DEFAULT '',
                 name TEXT NOT NULL,
                 technology TEXT NOT NULL,
                 dev_start_date TEXT NOT NULL,
@@ -107,6 +108,7 @@ def init_db():
                 "order" INTEGER NOT NULL
             );
 
+            CREATE INDEX IF NOT EXISTS idx_projects_user ON projects(user_id);
             CREATE INDEX IF NOT EXISTS idx_phases_project ON phases(project_id);
             CREATE INDEX IF NOT EXISTS idx_stories_project ON stories(project_id);
             CREATE INDEX IF NOT EXISTS idx_stories_phase ON stories(phase_id);
@@ -119,27 +121,27 @@ def init_db():
 # ---- Projects ----
 
 
-def create_project(name: str, technology: list[str], dev_start_date: str, provider: str, model: str, complexity_override: str | None, hours_per_day: float) -> str:
+def create_project(name: str, technology: list[str], dev_start_date: str, provider: str, model: str, complexity_override: str | None, hours_per_day: float, user_id: str) -> str:
     pid = new_id()
     ts = now_iso()
     with get_conn() as conn:
         conn.execute(
-            "INSERT INTO projects (id, name, technology, dev_start_date, provider, model, complexity_override, hours_per_day, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (pid, name, json.dumps(technology), dev_start_date, provider, model, complexity_override, hours_per_day, ts, ts),
+            "INSERT INTO projects (id, user_id, name, technology, dev_start_date, provider, model, complexity_override, hours_per_day, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (pid, user_id, name, json.dumps(technology), dev_start_date, provider, model, complexity_override, hours_per_day, ts, ts),
         )
     return pid
 
 
-def list_projects() -> list[ProjectDto]:
+def list_projects(user_id: str) -> list[ProjectDto]:
     with get_conn() as conn:
-        rows = conn.execute("SELECT id FROM projects ORDER BY updated_at DESC").fetchall()
-    return [get_project(row["id"]) for row in rows]
+        rows = conn.execute("SELECT id FROM projects WHERE user_id = ? ORDER BY updated_at DESC", (user_id,)).fetchall()
+    return [get_project(row["id"], user_id) for row in rows]
 
 
-def delete_project(project_id: str):
+def delete_project(project_id: str, user_id: str):
     with get_conn() as conn:
-        conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+        conn.execute("DELETE FROM projects WHERE id = ? AND user_id = ?", (project_id, user_id))
 
 
 def update_project_meta(project_id: str, **fields):
@@ -170,9 +172,9 @@ def update_project_meta(project_id: str, **fields):
         conn.execute(f"UPDATE projects SET {', '.join(sets)} WHERE id = ?", values)
 
 
-def get_project(project_id: str) -> ProjectDto | None:
+def get_project(project_id: str, user_id: str) -> ProjectDto | None:
     with get_conn() as conn:
-        p = conn.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
+        p = conn.execute("SELECT * FROM projects WHERE id = ? AND user_id = ?", (project_id, user_id)).fetchone()
         if not p:
             return None
 

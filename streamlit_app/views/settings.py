@@ -8,8 +8,9 @@ page_header("Settings", "Set your AI provider API keys for this browser session.
 
 st.info(
     "Keys entered here apply **only to your current browser session** — nothing is saved on the "
-    "server, and other people using this same app (e.g. a shared deployed link) never see your key "
-    "or have theirs affected by you. Close the tab or start a new session and you'll need to re-enter it."
+    "server and nothing is ever read from an environment file. Other people using this same app "
+    "(e.g. a shared deployed link) never see your key, and you'll need to re-enter it in any new "
+    "session (new tab, refresh, or after closing the browser)."
 )
 
 for provider, label in PROVIDER_LABELS.items():
@@ -17,14 +18,11 @@ for provider, label in PROVIDER_LABELS.items():
         st.subheader(f"{PROVIDER_ICONS[provider]} {label}")
 
         session_key = session_keys.get_session_key(provider)
-        deployment_default = session_keys.get_deployment_default_key(provider)
 
         if session_key:
             st.success(f"Using your session key — ending in **····{session_key[-4:]}**")
-        elif deployment_default:
-            st.info("No session key set — currently using this deployment's default key (set by whoever hosts this app).")
         else:
-            st.warning("No API key available yet. Generation with this provider won't work until you add one.")
+            st.warning("No API key set for this session yet. Generation with this provider won't work until you add one.")
 
         with st.form(f"api_key_form_{provider}", clear_on_submit=True):
             new_key = st.text_input(f"{label} API Key", type="password", placeholder="Paste your key here", key=f"settings-key-{provider}")
@@ -58,6 +56,6 @@ st.write("")
 with st.container(border=True):
     st.subheader("About")
     st.caption(
-        "EstiFlow has no login — anyone with a link to this app can view and edit every project. "
-        "API keys, however, are private to your own browser session and never shared between visitors."
+        "EstiFlow has no login — anyone with a link to this app can view and edit their own projects only. "
+        "API keys are private to your own browser session and never shared between visitors or read from config."
     )

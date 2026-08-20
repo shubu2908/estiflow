@@ -3,6 +3,9 @@ import streamlit as st
 import db
 from model_catalog import PROVIDER_ICONS, PROVIDER_LABELS
 from styles import hero, pill
+from user_scope import get_user_id
+
+user_id = get_user_id()
 
 hero("Projects", "Upload a Solution Design Document, pick a model, and get a realistic delivery estimate with a full backlog and test suite.")
 
@@ -11,7 +14,7 @@ with col2:
     if st.button("➕ New Project", type="primary", use_container_width=True):
         st.switch_page("views/new_project.py")
 
-projects = db.list_projects()
+projects = db.list_projects(user_id)
 
 if projects:
     generated = sum(1 for p in projects if p.status != "draft")
@@ -45,9 +48,30 @@ else:
                 st.markdown(badges, unsafe_allow_html=True)
                 st.caption(", ".join(project.technology) or "No technology set")
                 st.caption(f"Dev start {project.devStartDate[:10]}")
-                if st.button("Open", key=f"open-{project.id}", use_container_width=True):
-                    st.session_state["active_project_id"] = project.id
-                    if project.status == "draft":
-                        st.switch_page("views/upload_generate.py")
-                    else:
-                        st.switch_page("views/workspace.py")
+
+                confirm_key = f"confirm-delete-{project.id}"
+                if st.session_state.get(confirm_key):
+                    st.error("Delete permanently? This can't be undone.")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        if st.button("Yes, delete", key=f"confirm-yes-{project.id}", use_container_width=True):
+                            db.delete_project(project.id, user_id)
+                            del st.session_state[confirm_key]
+                            st.rerun()
+                    with c2:
+                        if st.button("Cancel", key=f"confirm-no-{project.id}", use_container_width=True):
+                            del st.session_state[confirm_key]
+                            st.rerun()
+                else:
+                    c1, c2 = st.columns([3, 1])
+                    with c1:
+                        if st.button("Open", key=f"open-{project.id}", use_container_width=True):
+                            st.session_state["active_project_id"] = project.id
+                            if project.status == "draft":
+                                st.switch_page("views/upload_generate.py")
+                            else:
+                                st.switch_page("views/workspace.py")
+                    with c2:
+                        if st.button("🗑️", key=f"delete-{project.id}", use_container_width=True, help="Delete permanently"):
+                            st.session_state[confirm_key] = True
+                            st.rerun()

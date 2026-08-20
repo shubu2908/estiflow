@@ -6,22 +6,15 @@ from model_catalog import PROVIDER_LABELS
 
 def render_api_key_prompt(provider: str, key_prefix: str = "") -> str | None:
     """Shows the configured status for a provider's key, or an inline field to set
-    it right here (rather than only ever fetching it silently from an env file).
-    The key is stored in this visitor's browser session only - on a shared/deployed
-    instance, entering a key here never overwrites or exposes it to anyone else.
+    it right here. Keys are session-only - never read from an env file or any
+    server-side default - so every visitor enters their own, every session.
     Returns the effective key so callers can use it immediately after saving."""
     label = PROVIDER_LABELS[provider]
     session_key = session_keys.get_session_key(provider)
-    deployment_default = session_keys.get_deployment_default_key(provider)
-    effective = session_key or deployment_default
 
     if session_key:
         st.success(f"✓ {label} API key set for this session — ending in ····{session_key[-4:]}")
-        return effective
-
-    if deployment_default:
-        st.info(f"Using this deployment's default {label} key. You can use your own for this session instead, below.")
-        return effective
+        return session_key
 
     st.warning(f"{label} API key required to generate with this model.")
     col1, col2 = st.columns([4, 1])
@@ -40,6 +33,6 @@ def render_api_key_prompt(provider: str, key_prefix: str = "") -> str | None:
                 st.rerun()
             else:
                 st.error("Enter a key first.")
-    st.caption("Stored only in your browser session — not saved on the server, and not visible to other visitors.")
+    st.caption("Stored only in your browser session — never saved on the server, never read from a config file.")
 
-    return effective
+    return None

@@ -7,6 +7,9 @@ from constants import TECHNOLOGIES, COMPLEXITY_LEVELS, DEFAULT_HOURS_PER_DAY
 from model_catalog import models_by_provider, PROVIDER_LABELS, PROVIDER_ICONS, get_default_model
 from styles import page_header
 from ui_helpers import render_api_key_prompt
+from user_scope import get_user_id
+
+user_id = get_user_id()
 
 page_header("New Project", "Set up the basics, then upload the SDD to generate an estimate.")
 
@@ -56,6 +59,7 @@ with st.container(border=True):
                 model=selected_model,
                 complexity_override=None if complexity == "AI-inferred (recommended)" else complexity,
                 hours_per_day=hours_per_day,
+                user_id=user_id,
             )
             st.session_state["active_project_id"] = project_id
             st.switch_page("views/upload_generate.py")

@@ -9,6 +9,9 @@ from retry import GenerationError
 from styles import page_header
 from timeline import TimelinePhaseInput, calculate_timeline
 from ui_helpers import render_api_key_prompt
+from user_scope import get_user_id
+
+user_id = get_user_id()
 
 project_id = st.session_state.get("active_project_id")
 if not project_id:
@@ -17,7 +20,7 @@ if not project_id:
         st.switch_page("views/dashboard.py")
     st.stop()
 
-project = db.get_project(project_id)
+project = db.get_project(project_id, user_id)
 if not project:
     st.error("That project no longer exists.")
     if st.button("← Back to Dashboard"):

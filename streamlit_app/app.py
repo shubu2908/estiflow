@@ -1,14 +1,14 @@
 import streamlit as st
-from dotenv import load_dotenv
 
 from db import init_db
 from styles import inject_css, brand_mark
+from user_scope import get_user_id
 
-load_dotenv()
 st.set_page_config(page_title="EstiFlow", page_icon="📊", layout="wide")
 
 init_db()
 inject_css()
+get_user_id()  # establishes ?uid=... in the URL on first visit, before any page renders
 
 with st.sidebar:
     brand_mark()

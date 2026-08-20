@@ -37,11 +37,6 @@ def init_db():
     with get_conn() as conn:
         conn.executescript(
             """
-            CREATE TABLE IF NOT EXISTS app_settings (
-                provider TEXT PRIMARY KEY,
-                api_key TEXT
-            );
-
             CREATE TABLE IF NOT EXISTS projects (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
@@ -119,52 +114,6 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_testcases_story ON test_cases(story_id);
             """
         )
-
-
-# ---- Settings (one API key per provider) ----
-
-_ENV_VAR_BY_PROVIDER = {"gemini": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY", "anthropic": "ANTHROPIC_API_KEY"}
-
-
-def get_api_key(provider: str) -> str | None:
-    with get_conn() as conn:
-        row = conn.execute("SELECT api_key FROM app_settings WHERE provider = ?", (provider,)).fetchone()
-        return row["api_key"] if row else None
-
-
-def set_api_key(provider: str, key: str | None):
-    with get_conn() as conn:
-        conn.execute(
-            "INSERT INTO app_settings (provider, api_key) VALUES (?, ?) "
-            "ON CONFLICT(provider) DO UPDATE SET api_key = excluded.api_key",
-            (provider, key),
-        )
-
-
-def get_effective_api_key(provider: str) -> str | None:
-    """Key entered in Settings takes priority; falls back to the provider's env var,
-    then to Streamlit Cloud secrets (st.secrets) - covers local .env, Cloud "Secrets"
-    UI, and any deployment where only one of the two is actually wired up."""
-    import os
-
-    env_var = _ENV_VAR_BY_PROVIDER.get(provider)
-    if not env_var:
-        return None
-
-    saved = get_api_key(provider)
-    if saved:
-        return saved
-
-    from_env = os.environ.get(env_var)
-    if from_env:
-        return from_env
-
-    try:
-        import streamlit as st
-
-        return st.secrets.get(env_var) or None
-    except Exception:
-        return None
 
 
 # ---- Projects ----

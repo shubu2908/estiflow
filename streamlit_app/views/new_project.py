@@ -14,9 +14,9 @@ with st.container(border=True):
     name = st.text_input("Project Name", placeholder="Invoice Processing Automation")
     dev_start = st.date_input("Planned Dev Start Date", value=date.today())
 
-    technology = st.multiselect("Technology", TECHNOLOGIES, placeholder="Select one or more technologies")
+    technology_choice = st.selectbox("Technology", TECHNOLOGIES, index=None, placeholder="Select a technology")
     other_tech = ""
-    if "Other" in technology:
+    if technology_choice == "Other":
         other_tech = st.text_input("Specify other technology")
 
     col1, col2 = st.columns(2)
@@ -44,13 +44,10 @@ with st.container(border=True):
 
     st.write("")
     if st.button("Continue to Upload", type="primary", use_container_width=True):
-        resolved_tech = [t for t in technology if t != "Other"]
-        if other_tech.strip():
-            resolved_tech.append(other_tech.strip())
-
-        if not name.strip() or not resolved_tech:
-            st.error("Project name and at least one technology are required.")
+        if not name.strip() or not technology_choice or (technology_choice == "Other" and not other_tech.strip()):
+            st.error("Project name and a technology are required.")
         else:
+            resolved_tech = [other_tech.strip() if technology_choice == "Other" else technology_choice]
             project_id = db.create_project(
                 name=name.strip(),
                 technology=resolved_tech,

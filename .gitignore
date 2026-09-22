@@ -10,3 +10,9 @@ build/
 venv/
 __pycache__/
 *.pyc
+
+# Real client/business documents used for local testing - this repo is public,
+# never let these get committed.
+*.zip
+Accenture_Processes.zip
+BKR_SOW_Bank_Reconciliation*.pdf

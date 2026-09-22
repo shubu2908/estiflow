@@ -55,7 +55,7 @@ with st.container(border=True):
         accept_multiple_files=True,
         label_visibility="collapsed",
     )
-    st.caption("PDF, DOCX, PNG, JPG — multiple files allowed")
+    st.caption("PDF, DOCX, PNG, JPG — multiple files allowed. DOCX screenshots are extracted and sent along with the text.")
 
     generate_clicked = st.button("Generate Estimate", type="primary", disabled=not uploaded_files or not api_key)
 
@@ -63,10 +63,12 @@ with st.container(border=True):
         if selected_model != project.model or selected_provider != project.provider:
             db.update_project_meta(project.id, provider=selected_provider, model=selected_model)
 
-        with st.status(f"Generating estimate with {PROVIDER_LABELS[selected_provider]}... this can take 10–30s", expanded=True) as status:
+        with st.status(f"Generating estimate with {PROVIDER_LABELS[selected_provider]}... this can take 10–60s (longer for image-heavy documents)", expanded=True) as status:
             try:
                 st.write("Reading uploaded files...")
-                input_parts = files_to_neutral_parts(uploaded_files)
+                input_parts, file_warnings = files_to_neutral_parts(uploaded_files)
+                for w in file_warnings:
+                    st.warning(w)
 
                 st.write(f"Calling {PROVIDER_LABELS[selected_provider]}...")
                 result = generate_estimate(
